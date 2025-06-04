@@ -1,2 +1,2 @@
 # Parent-component-search
-About Figma plugin for listing unique components within a given Figma file
+Searches the given Figma file for all available (assuming the components are properly named) components and displays the total number of unique components.
