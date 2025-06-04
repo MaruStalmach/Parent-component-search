@@ -1,0 +1,12 @@
+{
+  "name": "parent-component-list",
+  "id": "1225498390710809905",
+  "api": "1.0.0",
+  "editorType": ["figma"],
+  "main": "code.js",
+  "ui": "ui.html",
+  "menu": [
+    { "name": "List Parent Components", "command": "list-parent-components" }
+  ],
+  "permissions": []
+}

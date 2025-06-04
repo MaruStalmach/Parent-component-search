@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 16px;
+      margin: 0;
+      background: #ffffff;
+      font-size: 12px;
+    }
+    .header {
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e1e5e9;
+    }
+    .title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+      margin: 0 0 8px 0;
+    }
+    .stats {
+      display: flex;
+      gap: 12px;
+      justify-content: space-between;
+    }
+    .stat-card {
+      background: #f7f8fa;
+      padding: 12px;
+      border-radius: 6px;
+      text-align: center;
+      flex: 1;
+    }
+    .stat-number {
+      font-size: 20px;
+      font-weight: 600;
+      color: #0c8ce9;
+      display: block;
+    }
+    .stat-label {
+      font-size: 10px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 4px;
+    }
+    .component-list {
+      max-height: 300px;
+      overflow-y: auto;
+      margin-bottom: 12px;
+    }
+    .component-item {
+      padding: 10px 12px;
+      margin-bottom: 4px;
+      background: #ffffff;
+      border: 1px solid #e1e5e9;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .component-item:hover {
+      background: #f7f8fa;
+      border-color: #0c8ce9;
+      transform: translateY(-1px);
+    }
+    .component-name {
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 4px;
+    }
+    .component-meta {
+      font-size: 10px;
+      color: #8c9196;
+    }
+    .copy-btn {
+      width: 100%;
+      padding: 10px;
+      background: #0c8ce9;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      margin-top: 4px;
+    }
+    .copy-btn:hover {
+      background: #0a7bd1;
+    }
+    .no-components {
+      text-align: center;
+      color: #8c9196;
+      padding: 40px 20px;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1 class="title">Main Components</h1>
+    <div class="stats">
+      <div class="stat-card">
+        <span class="stat-number" id="unique-count">0</span>
+        <div class="stat-label">Unique</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-number" id="total-count">0</span>
+        <div class="stat-label">Total</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="component-list" id="component-list">
+    <div class="no-components">Loading...</div>
+  </div>
+
+  <button class="copy-btn" onclick="copyList()">Copy List to Console</button>
+  <button class="copy-btn" onclick="copyToClipboard()">Copy List to Clipboard</button>
+
+  <script>
+    let currentData = null;
+
+    function copyList() {
+      parent.postMessage({
+        pluginMessage: { type: 'copy-list' }
+      }, '*');
+    }
+
+    function copyToClipboard() {
+      if (!currentData) return;
+      const names = currentData.uniqueComponents.map(c => c.name).join('\n');
+      navigator.clipboard.writeText(names).then(() => {
+        alert('Copied to clipboard!');
+      });
+    }
+
+    function renderComponents(data) {
+      const listContainer = document.getElementById('component-list');
+      const uniqueCountEl = document.getElementById('unique-count');
+      const totalCountEl = document.getElementById('total-count');
+
+      uniqueCountEl.textContent = data.stats.unique;
+      totalCountEl.textContent = data.stats.total;
+
+      if (data.uniqueComponents.length === 0) {
+        listContainer.innerHTML = '<div class="no-components">No components found</div>';
+        return;
+      }
+
+      listContainer.innerHTML = '';
+
+    }
+
+    onmessage = (event) => {
+      const { type, data } = event.data.pluginMessage;
+      if (type === 'components-found') {
+        currentData = data;
+        renderComponents(data);
+      }
+    };
+  </script>
+</body>
+</html>
