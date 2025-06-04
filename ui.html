@@ -6,58 +6,64 @@
     * { box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      padding: 16px;
+      padding: 20px;
       margin: 0;
       background: #ffffff;
       font-size: 12px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
     .header {
-      margin-bottom: 16px;
-      padding-bottom: 12px;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
       border-bottom: 1px solid #e1e5e9;
     }
     .title {
-      font-size: 16px;
+      font-size: 18px;
       font-weight: 600;
       color: #333;
-      margin: 0 0 8px 0;
+      margin: 0 0 12px 0;
     }
     .stats {
       display: flex;
-      gap: 12px;
+      gap: 16px;
       justify-content: space-between;
     }
     .stat-card {
       background: #f7f8fa;
-      padding: 12px;
-      border-radius: 6px;
+      padding: 16px;
+      border-radius: 8px;
       text-align: center;
       flex: 1;
     }
     .stat-number {
-      font-size: 20px;
+      font-size: 24px;
       font-weight: 600;
       color: #0c8ce9;
       display: block;
     }
     .stat-label {
-      font-size: 10px;
+      font-size: 11px;
       color: #666;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      margin-top: 4px;
+      margin-top: 6px;
     }
     .component-list {
-      max-height: 300px;
+      flex: 1;
       overflow-y: auto;
-      margin-bottom: 12px;
+      margin-bottom: 16px;
+      border: 1px solid #e1e5e9;
+      border-radius: 8px;
+      padding: 8px;
     }
     .component-item {
-      padding: 10px 12px;
-      margin-bottom: 4px;
+      padding: 12px 16px;
+      margin-bottom: 6px;
       background: #ffffff;
       border: 1px solid #e1e5e9;
-      border-radius: 6px;
+      border-radius: 8px;
       cursor: pointer;
       transition: all 0.2s ease;
     }
@@ -65,40 +71,67 @@
       background: #f7f8fa;
       border-color: #0c8ce9;
       transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(12, 140, 233, 0.1);
     }
     .component-name {
       font-weight: 500;
       color: #333;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
+      font-size: 13px;
     }
     .component-meta {
-      font-size: 10px;
+      font-size: 11px;
       color: #8c9196;
     }
     .copy-btn {
       width: 100%;
-      padding: 10px;
+      padding: 14px;
       background: #0c8ce9;
       color: white;
       border: none;
-      border-radius: 6px;
+      border-radius: 8px;
       cursor: pointer;
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 500;
-      margin-top: 4px;
+      transition: all 0.2s ease;
     }
     .copy-btn:hover {
       background: #0a7bd1;
+      transform: translateY(-1px);
+    }
+    .copy-btn:active {
+      transform: translateY(0);
     }
     .no-components {
       text-align: center;
       color: #8c9196;
-      padding: 40px 20px;
+      padding: 60px 20px;
       font-style: italic;
+      font-size: 14px;
+    }
+    .copy-feedback {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #10b981;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+      z-index: 1000;
+    }
+    .copy-feedback.show {
+      opacity: 1;
     }
   </style>
 </head>
 <body>
+  <div class="copy-feedback" id="copy-feedback">Copied to clipboard!</div>
+  
   <div class="header">
     <h1 class="title">Main Components</h1>
     <div class="stats">
@@ -117,24 +150,65 @@
     <div class="no-components">Loading...</div>
   </div>
 
-  <button class="copy-btn" onclick="copyList()">Copy List to Console</button>
   <button class="copy-btn" onclick="copyToClipboard()">Copy List to Clipboard</button>
 
   <script>
     let currentData = null;
 
-    function copyList() {
-      parent.postMessage({
-        pluginMessage: { type: 'copy-list' }
-      }, '*');
+    function showCopyFeedback() {
+      const feedback = document.getElementById('copy-feedback');
+      feedback.classList.add('show');
+      setTimeout(() => {
+        feedback.classList.remove('show');
+      }, 2000);
     }
 
     function copyToClipboard() {
-      if (!currentData) return;
+      if (!currentData || currentData.uniqueComponents.length === 0) {
+        alert('no components to copy');
+        return;
+      }
+      
       const names = currentData.uniqueComponents.map(c => c.name).join('\n');
-      navigator.clipboard.writeText(names).then(() => {
-        alert('Copied to clipboard!');
-      });
+      
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(names)
+          .then(() => {
+            showCopyFeedback();
+            parent.postMessage({
+              pluginMessage: {
+                type: 'copy-list'
+              }
+            }, '*');
+          })
+          .catch(err => {
+            console.error('failed to copy:', err);
+            fallbackCopy(names);
+          });
+      } else {
+        fallbackCopy(names);
+      }
+    }
+
+    function fallbackCopy(text) {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        showCopyFeedback();
+        parent.postMessage({
+          pluginMessage: {
+            type: 'copy-list'
+          }
+        }, '*');
+      } catch (err) {
+        alert('failed to copy');
+      }
+      document.body.removeChild(textArea);
     }
 
     function renderComponents(data) {
@@ -152,9 +226,30 @@
 
       listContainer.innerHTML = '';
 
+      data.uniqueComponents.forEach(component => {
+        const item = document.createElement('div');
+        item.className = 'component-item';
+        item.innerHTML = `
+          <div class="component-name">${component.name}</div>
+          <div class="component-meta">Page: ${component.page || 'Unknown'}</div>
+        `;
+        
+        item.addEventListener('click', () => {
+          // navigate to clicked component
+          parent.postMessage({
+            pluginMessage: {
+              type: 'navigate-to-component',
+              componentId: component.id,
+              pageId: component.pageId
+            }
+          }, '*');
+        });
+        
+        listContainer.appendChild(item);
+      });
     }
 
-    onmessage = (event) => {
+    window.onmessage = (event) => {
       const { type, data } = event.data.pluginMessage;
       if (type === 'components-found') {
         currentData = data;

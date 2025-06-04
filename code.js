@@ -18,40 +18,49 @@ function findAllMainComponents() {
   const allComponents = [];
   const uniqueComponents = new Map();
 
-    allNodes.forEach(node => {
-      if (node.type === "COMPONENT" || node.type === "COMPONENT_SET") {
-        let mainName = "";
+  allNodes.forEach(node => {
+    if (node.type === "COMPONENT" || node.type === "COMPONENT_SET") {
+      let mainName = "";
 
-        // fetch set name for component set
-        if (node.type === "COMPONENT_SET") {
+      // fetch set name for component set
+      if (node.type === "COMPONENT_SET") {
+        mainName = node.name;
+      } 
+      // fetch parent component name for singular component
+      else if (node.type === "COMPONENT") {
+        if (node.parent && node.parent.type === "COMPONENT_SET") {
+          mainName = node.parent.name;
+        } else {
           mainName = node.name;
-
-        } 
-        // fetch parent component name for singular component
-        else if (node.type === "COMPONENT") {
-          if (node.parent && node.parent.type === "COMPONENT_SET") {
-            mainName = node.parent.name;
-          } else {
-            mainName = node.name;
-          }
         }
+      }
 
-        const componentInfo = {
-          name: mainName,
-          id: node.id,
-          parentType: (node.parent && node.parent.type) || "unknown"
+      // find the page the component is on
+      let currentNode = node;
+      while (currentNode && currentNode.type !== "PAGE") {
+        currentNode = currentNode.parent;
+      }
+      const pageName = currentNode ? currentNode.name : "unknown page";
+      const pageId = currentNode ? currentNode.id : null;
+
+      const componentInfo = {
+        name: mainName,
+        id: node.id,
+        page: pageName,
+        pageId: pageId,
+        parentType: (node.parent && node.parent.type) || "unknown"
       };
 
       allComponents.push(componentInfo);
 
-      const nameLower = node.name.toLowerCase();
+      const nameLower = mainName.toLowerCase();
       // search only for properly named components
       const include = ["atom", "molecule", "organism", "module"].some(keyword =>
-        nameLower.startsWith(keyword) && !nameLower.startsWith(`_${keyword}`)
+        (nameLower.includes(keyword) || nameLower.includes(`_${keyword}`))
       );
 
-      if (include && !uniqueComponents.has(node.name)) {
-        uniqueComponents.set(node.name, componentInfo);
+      if (include && !uniqueComponents.has(mainName)) {
+        uniqueComponents.set(mainName, componentInfo);
       }
     }
   });
@@ -61,7 +70,7 @@ function findAllMainComponents() {
 
   console.log(`Found:
   - ${allComponents.length} in total
-  - ${uniqueComponentsList.length} components`);
+  - ${uniqueComponentsList.length}`);
 
   return {
     allComponents,
@@ -73,10 +82,9 @@ function findAllMainComponents() {
   };
 }
 
-
 const results = findAllMainComponents();
 
-figma.showUI(__html__, { width: 350, height: 500 });
+figma.showUI(__html__, { width: 450, height: 650 });
 
 figma.ui.postMessage({
   type: "components-found",
@@ -84,9 +92,24 @@ figma.ui.postMessage({
 });
 
 figma.ui.onmessage = (message) => {
+  if (message.type === "navigate-to-component") {
+    const componentId = message.componentId;
+    const pageId = message.pageId;
+
+    const page = figma.root.children.find(p => p.id === pageId);
+    if (page && page.type === "PAGE") {
+      figma.currentPage = page;
+      const component = figma.getNodeById(componentId);
+      if (component) {
+        figma.viewport.scrollAndZoomIntoView([component]);
+        figma.currentPage.selection = [component];
+      }
+    }
+  }
+
   if (message.type === "copy-list") {
     const componentNames = results.uniqueComponents.map(c => c.name);
-    console.log("Copy component list:");
+    console.log("list to copy:");
     console.log(componentNames.join('\n'));
   }
 };
